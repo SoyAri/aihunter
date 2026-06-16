@@ -1,0 +1,253 @@
+@if (isLoading()) {
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p class="loading-text">Buscando tus herramientas perfectas...</p>
+    <p class="loading-sub">Analizando tus preferencias</p>
+  </div>
+}
+
+@else if (isComplete()) {
+  <div class="results-wrapper">
+    <div class="results-header">
+      <div>
+        <h1>Tus recomendaciones</h1>
+        <p>{{ recommendations().length }} herramientas seleccionadas para ti</p>
+      </div>
+      <div class="header-actions">
+        <button (click)="editPreferences()" class="btn-secondary">
+          <span class="material-icons">tune</span>
+          Editar preferencias
+        </button>
+        <button (click)="clearPrefs()" class="btn-danger">
+          <span class="material-icons">delete_outline</span>
+          Limpiar
+        </button>
+      </div>
+    </div>
+
+    @if (recommendations().length === 0) {
+      <div class="empty-results">
+        <p>No encontramos herramientas con esos filtros.</p>
+        <button (click)="editPreferences()" class="btn-secondary" style="margin-top:1rem">
+          Editar preferencias
+        </button>
+      </div>
+    } @else {
+      <div class="tools-grid">
+        @for (tool of recommendations(); track tool.id) {
+          <div class="tool-card">
+            <div class="tool-image-container">
+              <img
+                [src]="tool.tool_image_url"
+                [alt]="tool.tool"
+                class="tool-image"
+                (error)="hideImage($event)"
+              />
+            </div>
+            <div class="tool-body">
+              <div class="tool-header-row">
+                <h3 class="tool-name">{{ tool.tool }}</h3>
+                <span class="category-badge">{{ tool.category }}</span>
+              </div>
+              <p class="tool-desc">{{ tool.tool_description }}</p>
+              <div class="tool-footer">
+                <span class="upvotes">
+                  <span class="material-icons">thumb_up</span>
+                  {{ tool.upvotes }}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+@else if (errorMsg()) {
+  <div class="error-state">
+    <span class="material-icons" style="font-size:3rem;color:#f87171">error_outline</span>
+    <p>{{ errorMsg() }}</p>
+    <button (click)="clearPrefs()">Reintentar desde el inicio</button>
+  </div>
+}
+
+@else {
+  <div class="wizard-container">
+
+    <div class="progress-bar">
+      @for (step of [0,1,2,3,4]; track step) {
+        <div
+          class="progress-step"
+          [class.active]="currentStep() === step"
+          [class.completed]="currentStep() > step"
+        >
+          @if (currentStep() > step) {
+            <span class="material-icons">check</span>
+          } @else {
+            {{ step + 1 }}
+          }
+        </div>
+        @if (step < 4) {
+          <div class="progress-line" [class.active]="currentStep() > step"></div>
+        }
+      }
+    </div>
+
+    @switch (currentStep()) {
+      @case (0) {
+        <div class="step-content">
+          <h2 class="step-title">¿A qué te dedicas?</h2>
+          <p class="step-subtitle">Busca tu ocupación para personalizar tus recomendaciones</p>
+
+          @if (preferences().occupation) {
+            <div class="selected-badge">
+              <span class="material-icons">check_circle</span>
+              {{ preferences().occupation }}
+              <button (click)="clearOccupation()" class="clear-selection">✕</button>
+            </div>
+          }
+
+          <div class="search-wrapper">
+            <span class="material-icons search-icon">search</span>
+            <input
+              type="text"
+              placeholder="Buscar ocupación..."
+              (input)="onSearchChange($event)"
+              class="search-input"
+            />
+          </div>
+
+          <div class="occupation-list">
+            @if (allOccupations().length === 0) {
+              <div class="loading-occupations">
+                <div class="mini-spinner"></div>
+                <span>Cargando ocupaciones...</span>
+              </div>
+            } @else if (filteredOccupations().length === 0) {
+              <p class="no-results">Sin resultados para "{{ occupationSearch() }}"</p>
+            } @else {
+              @for (occ of filteredOccupations(); track occ.id) {
+                <button
+                  class="occupation-item"
+                  [class.selected]="preferences().occupation === occ.occupation_name"
+                  (click)="selectOccupation(occ.occupation_name)"
+                >
+                  <span>{{ occ.occupation_name }}</span>
+                  @if (preferences().occupation === occ.occupation_name) {
+                    <span class="material-icons check-icon">check</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
+
+      @case (1) {
+        <div class="step-content">
+          <h2 class="step-title">¿Para qué usarás la IA principalmente?</h2>
+          <p class="step-subtitle">Selecciona todas las que apliquen</p>
+          <div class="chips-grid">
+            @for (useCase of USE_CASES; track useCase) {
+              <button
+                class="chip"
+                [class.chip-selected]="preferences().useCases.includes(useCase)"
+                (click)="toggleUseCase(useCase)"
+              >
+                {{ useCase }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @case (2) {
+        <div class="step-content">
+          <h2 class="step-title">¿Con qué tipo de contenido trabajas?</h2>
+          <p class="step-subtitle">Opcional — selecciona todas las que apliquen</p>
+          <div class="chips-grid">
+            @for (type of CONTENT_TYPES; track type) {
+              <button
+                class="chip"
+                [class.chip-selected]="preferences().contentTypes.includes(type)"
+                (click)="toggleContentType(type)"
+              >
+                {{ type }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @case (3) {
+        <div class="step-content">
+          <h2 class="step-title">¿Cuál es tu nivel de experiencia con tecnología?</h2>
+          <p class="step-subtitle">Opcional — elige solo uno</p>
+          <div class="level-cards">
+            @for (level of TECH_LEVELS; track level.label) {
+              <button
+                class="level-card"
+                [class.level-selected]="preferences().techLevel === level.label"
+                (click)="selectTechLevel(level.label)"
+              >
+                <span class="level-icon">{{ level.icon }}</span>
+                <span class="level-label">{{ level.label }}</span>
+                <span class="level-desc">{{ level.desc }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @case (4) {
+        <div class="step-content">
+          <h2 class="step-title">¿Qué categorías de IA te interesan más?</h2>
+          <p class="step-subtitle">Opcional — selecciona todas las que te interesen</p>
+          <div class="chips-grid">
+            @for (cat of CATEGORIES; track cat) {
+              <button
+                class="chip"
+                [class.chip-selected]="preferences().categories.includes(cat)"
+                (click)="toggleCategory(cat)"
+              >
+                {{ cat }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <div class="wizard-nav">
+      @if (currentStep() > 0) {
+        <button (click)="back()" class="btn-back">
+          <span class="material-icons">arrow_back</span>
+          Atrás
+        </button>
+      } @else {
+        <div></div>
+      }
+
+      <div class="nav-right">
+        @if (isOptionalStep()) {
+          <button (click)="skip()" class="btn-skip">Omitir</button>
+        }
+        <button
+          (click)="next()"
+          class="btn-next"
+          [class.btn-finish]="currentStep() === 4"
+          [disabled]="!canProceed()"
+        >
+          {{ currentStep() === 4 ? 'Finalizar' : 'Siguiente' }}
+          @if (currentStep() < 4) {
+            <span class="material-icons">arrow_forward</span>
+          } @else {
+            <span class="material-icons">rocket_launch</span>
+          }
+        </button>
+      </div>
+    </div>
+
+  </div>
+}
