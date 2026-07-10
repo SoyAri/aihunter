@@ -1,23 +1,41 @@
 <nav class="navbar">
-  <div class="navbar-brand">
+  <a routerLink="/" class="navbar-brand">
+    <span class="brand-mark">
+      <span class="material-symbols-rounded">bolt</span>
+    </span>
     <span class="brand-text">AIHunter</span>
-  </div>
+  </a>
 
   <div class="navbar-search">
     <div class="search-wrapper">
-      <span class="material-icons search-icon">search</span>
+      <span class="material-symbols-rounded search-icon">search</span>
       <input
         type="text"
         class="search-input"
-        placeholder="Buscar..."
-        disabled
+        placeholder="Buscar herramientas de IA..."
+        [value]="query"
+        (input)="onSearchInput($event)"
+        (keydown.enter)="onSearchEnter()"
       />
+      @if (query) {
+        <button type="button" class="search-clear" aria-label="Limpiar búsqueda" (click)="clearSearch()">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      }
     </div>
   </div>
 
   <div class="navbar-actions">
-    <button class="user-btn" aria-label="Perfil de usuario">
-      <span class="material-icons">account_circle</span>
-    </button>
+    @if (authService.isLoggedIn()) {
+      <a routerLink="/perfil" class="user-pill" title="{{ authService.user()?.email }}">
+        <span class="user-avatar">{{ initials() }}</span>
+      </a>
+      <button type="button" class="icon-btn" aria-label="Cerrar sesión" title="Cerrar sesión" (click)="logout()">
+        <span class="material-symbols-rounded">logout</span>
+      </button>
+    } @else {
+      <a routerLink="/login" [queryParams]="{ mode: 'signup' }" class="signup-link">Crear cuenta</a>
+      <a routerLink="/login" class="login-link">Iniciar sesión</a>
+    }
   </div>
 </nav>

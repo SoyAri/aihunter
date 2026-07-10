@@ -1,1 +1,89 @@
-<p>perfil works!</p>
+<div class="page-bg" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<div class="perfil-wrapper">
+  <div class="perfil-card">
+    <div class="perfil-header">
+      <span class="perfil-avatar">{{ initials() }}</span>
+      <div>
+        <h1 class="perfil-email">{{ authService.user()?.email }}</h1>
+        @if (memberSince()) {
+          <p class="perfil-since">Miembro desde {{ memberSince() }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="perfil-section">
+      <h2 class="perfil-section-title">
+        <span class="material-symbols-rounded">tune</span>
+        Tus preferencias
+      </h2>
+
+      @if (loadingPrefs()) {
+        <div class="loading-row">
+          <div class="mini-spinner"></div>
+          <span>Cargando preferencias...</span>
+        </div>
+      } @else if (!prefs()) {
+        <p class="perfil-empty">Aún no completas tus preferencias de recomendaciones.</p>
+      } @else {
+        <div class="pref-groups">
+          @if (prefs()?.occupation) {
+            <div class="pref-group">
+              <span class="pref-label">Ocupación</span>
+              <span class="pref-chip">{{ prefs()?.occupation }}</span>
+            </div>
+          }
+          @if (prefs()?.useCases?.length) {
+            <div class="pref-group">
+              <span class="pref-label">Casos de uso</span>
+              <div class="pref-chips">
+                @for (uc of prefs()?.useCases; track uc) {
+                  <span class="pref-chip">{{ uc }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (prefs()?.contentTypes?.length) {
+            <div class="pref-group">
+              <span class="pref-label">Tipos de contenido</span>
+              <div class="pref-chips">
+                @for (ct of prefs()?.contentTypes; track ct) {
+                  <span class="pref-chip">{{ ct }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (prefs()?.techLevel) {
+            <div class="pref-group">
+              <span class="pref-label">Nivel</span>
+              <span class="pref-chip">{{ prefs()?.techLevel }}</span>
+            </div>
+          }
+          @if (prefs()?.categories?.length) {
+            <div class="pref-group">
+              <span class="pref-label">Categorías</span>
+              <div class="pref-chips">
+                @for (cat of prefs()?.categories; track cat) {
+                  <span class="pref-chip">{{ cat }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <a routerLink="/" class="btn-secondary perfil-edit-btn">
+        <span class="material-symbols-rounded">edit</span>
+        Editar preferencias
+      </a>
+    </div>
+
+    <button class="btn-danger perfil-logout-btn" (click)="logout()">
+      <span class="material-symbols-rounded">logout</span>
+      Cerrar sesión
+    </button>
+  </div>
+</div>

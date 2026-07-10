@@ -1,0 +1,62 @@
+<div class="page-bg" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<div class="buscar-wrapper">
+  <div class="buscar-header">
+    <div>
+      <h1 class="results-title gradient-title">Resultados de búsqueda</h1>
+      @if (query()) {
+        <p class="step-subtitle">"{{ query() }}"</p>
+      }
+    </div>
+    <a routerLink="/" class="btn-secondary">
+      <span class="material-symbols-rounded">arrow_back</span>
+      Volver al inicio
+    </a>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-row">
+      <div class="mini-spinner"></div>
+      <span>Buscando...</span>
+    </div>
+  } @else if (!searched()) {
+    <div class="empty-results">
+      <p>Escribe al menos 2 caracteres para buscar herramientas de IA.</p>
+    </div>
+  } @else if (results().length === 0) {
+    <div class="empty-results">
+      <p>Sin resultados para "{{ query() }}".</p>
+    </div>
+  } @else {
+    <div class="tools-grid">
+      @for (tool of results(); track tool.id) {
+        <div class="tool-card">
+          <div class="tool-image-container">
+            <img
+              [src]="tool.tool_image_url"
+              [alt]="tool.tool"
+              class="tool-image"
+              (error)="hideImage($event)"
+            />
+          </div>
+          <div class="tool-body">
+            <div class="tool-header-row">
+              <h3 class="tool-name">{{ tool.tool }}</h3>
+              <span class="category-badge">{{ tool.category }}</span>
+            </div>
+            <p class="tool-desc">{{ tool.tool_description }}</p>
+            <div class="tool-footer">
+              <span class="upvotes">
+                <span class="material-symbols-rounded">thumb_up</span>
+                {{ tool.upvotes }}
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,42 +1,30 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
+import { Component, effect, signal, computed } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { PreferencesService } from '../../services/preferences.service';
+import { SupabaseService } from '../../services/supabase.service';
+import { AITool, Occupation, UserPreferences, emptyPreferences } from '../../models/preferences.model';
 
-interface UserPreferences {
-  occupation?: string;
-  useCases: string[];
-  contentTypes: string[];
-  techLevel?: string;
-  categories: string[];
+interface GuestSection {
+  label: string;
+  icon: string;
+  tools: AITool[];
 }
-
-interface AITool {
-  id: number;
-  tool: string;
-  tool_description: string;
-  tool_image_url: string;
-  category: string;
-  upvotes: number;
-  tags: string;
-}
-
-interface Occupation {
-  id: number;
-  occupation_name: string;
-}
-
-const supabase: SupabaseClient = createClient(
-  environment.supabaseUrl,
-  environment.supabaseAnonKey
-);
 
 @Component({
   selector: 'app-inicio',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './inicio.html',
   styleUrl: './inicio.css',
 })
-export class Inicio implements OnInit {
+export class Inicio {
+  readonly GUEST_CATEGORIES: { label: string; category: string; icon: string }[] = [
+    { label: 'Programación', category: 'Código generativo', icon: 'code' },
+    { label: 'General', category: 'Charlar', icon: 'forum' },
+    { label: 'Imágenes', category: 'Arte generativo', icon: 'palette' },
+    { label: 'Productividad', category: 'Productividad', icon: 'bolt' },
+  ];
+
   currentStep = signal(0);
   allOccupations = signal<Occupation[]>([]);
   occupationSearch = signal('');
@@ -48,18 +36,15 @@ export class Inicio implements OnInit {
     );
   });
 
-  preferences = signal<UserPreferences>({
-    occupation: undefined,
-    useCases: [],
-    contentTypes: [],
-    techLevel: undefined,
-    categories: [],
-  });
+  preferences = signal<UserPreferences>(emptyPreferences());
 
   recommendations = signal<AITool[]>([]);
   isLoading = signal(false);
   isComplete = signal(false);
   errorMsg = signal<string | null>(null);
+
+  guestSections = signal<GuestSection[]>([]);
+  guestLoading = signal(false);
 
   readonly USE_CASES = [
     'Productividad & Trabajo',
@@ -104,12 +89,77 @@ export class Inicio implements OnInit {
     'Mejora de imagen',
   ];
 
-  async ngOnInit() {
-    const saved = this.loadPrefs();
+  private lastUserId: string | null | undefined = undefined;
+
+  constructor(
+    protected authService: AuthService,
+    private preferencesService: PreferencesService,
+    private supabaseService: SupabaseService
+  ) {
+    effect(() => {
+      const uid = this.authService.user()?.id ?? null;
+      if (uid === this.lastUserId) return;
+      this.lastUserId = uid;
+
+      if (uid) {
+        this.enterAccountMode(uid);
+      } else {
+        this.enterGuestMode();
+      }
+    });
+  }
+
+  private resetWizardState() {
+    this.currentStep.set(0);
+    this.preferences.set(emptyPreferences());
+    this.recommendations.set([]);
+    this.isLoading.set(false);
+    this.isComplete.set(false);
+    this.errorMsg.set(null);
+  }
+
+  private async enterAccountMode(userId: string) {
+    this.resetWizardState();
     await this.loadOccupations();
+    const saved = await this.preferencesService.getPreferences(userId);
     if (saved) {
       this.preferences.set(saved);
       await this.getRecommendations();
+    }
+  }
+
+  private enterGuestMode() {
+    this.resetWizardState();
+    this.loadGuestRecommendations();
+  }
+
+  private async loadGuestRecommendations() {
+    this.guestLoading.set(true);
+    this.errorMsg.set(null);
+    try {
+      const sections = await Promise.all(
+        this.GUEST_CATEGORIES.map(async ({ label, category, icon }) => {
+          const { data, error } = await this.supabaseService.client.functions.invoke(
+            'recommend-tools',
+            {
+              body: {
+                occupation: undefined,
+                useCases: [],
+                contentTypes: [],
+                techLevel: undefined,
+                categories: [category],
+              } as UserPreferences,
+            }
+          );
+          const tools = error ? [] : ((data as AITool[]) ?? []);
+          return { label, icon, tools: tools.slice(0, 6) };
+        })
+      );
+      this.guestSections.set(sections);
+    } catch {
+      this.errorMsg.set('No se pudieron cargar las recomendaciones.');
+    } finally {
+      this.guestLoading.set(false);
     }
   }
 
@@ -119,7 +169,7 @@ export class Inicio implements OnInit {
     let all: Occupation[] = [];
 
     while (true) {
-      const { data } = await supabase
+      const { data } = await this.supabaseService.client
         .from('occupations')
         .select('*')
         .order('occupation_name')
@@ -215,7 +265,10 @@ export class Inicio implements OnInit {
   }
 
   private async finish() {
-    this.savePrefs(this.preferences());
+    const userId = this.authService.user()?.id;
+    if (userId) {
+      await this.preferencesService.savePreferences(userId, this.preferences());
+    }
     await this.getRecommendations();
   }
 
@@ -223,9 +276,10 @@ export class Inicio implements OnInit {
     this.isLoading.set(true);
     this.errorMsg.set(null);
     try {
-      const { data, error } = await supabase.functions.invoke('recommend-tools', {
-        body: this.preferences(),
-      });
+      const { data, error } = await this.supabaseService.client.functions.invoke(
+        'recommend-tools',
+        { body: this.preferences() }
+      );
       if (error) throw error;
       this.recommendations.set((data as AITool[]) ?? []);
       this.isComplete.set(true);
@@ -241,31 +295,15 @@ export class Inicio implements OnInit {
     this.currentStep.set(0);
   }
 
-  clearPrefs() {
-    localStorage.removeItem('aihunter_prefs');
-    this.preferences.set({
-      occupation: undefined,
-      useCases: [],
-      contentTypes: [],
-      techLevel: undefined,
-      categories: [],
-    });
-    this.isComplete.set(false);
-    this.isLoading.set(false);
-    this.errorMsg.set(null);
-    this.currentStep.set(0);
+  async clearPrefs() {
+    const userId = this.authService.user()?.id;
+    if (userId) {
+      await this.preferencesService.clearPreferences(userId);
+    }
+    this.resetWizardState();
   }
 
   hideImage(event: Event) {
     (event.target as HTMLImageElement).style.display = 'none';
-  }
-
-  private savePrefs(p: UserPreferences) {
-    localStorage.setItem('aihunter_prefs', JSON.stringify(p));
-  }
-
-  private loadPrefs(): UserPreferences | null {
-    const raw = localStorage.getItem('aihunter_prefs');
-    return raw ? JSON.parse(raw) : null;
   }
 }

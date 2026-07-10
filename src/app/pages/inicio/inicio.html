@@ -4,7 +4,71 @@
   <div class="orb orb-3"></div>
 </div>
 
-@if (isLoading()) {
+@if (!authService.isLoggedIn()) {
+  <div class="guest-wrapper">
+    <div class="guest-cta">
+      <div>
+        <h1 class="results-title guest-title gradient-title">Descubre herramientas de IA</h1>
+        <p class="step-subtitle">Recomendaciones populares por categoría</p>
+      </div>
+      <a routerLink="/login" [queryParams]="{ mode: 'signup' }" class="btn-next">
+        <span class="material-symbols-rounded">auto_awesome</span>
+        Recomendaciones personalizadas
+      </a>
+    </div>
+
+    @if (guestLoading()) {
+      <div class="loading-row">
+        <div class="mini-spinner"></div>
+        <span>Cargando recomendaciones...</span>
+      </div>
+    } @else {
+      @for (section of guestSections(); track section.label) {
+        <div class="guest-section">
+          <div class="guest-section-heading">
+            <span class="guest-section-icon">
+              <span class="material-symbols-rounded">{{ section.icon }}</span>
+            </span>
+            <h2 class="step-title guest-section-title">{{ section.label }}</h2>
+          </div>
+          @if (section.tools.length === 0) {
+            <p class="no-results">Sin resultados en esta categoría.</p>
+          } @else {
+            <div class="tools-grid">
+              @for (tool of section.tools; track tool.id) {
+                <div class="tool-card">
+                  <div class="tool-image-container">
+                    <img
+                      [src]="tool.tool_image_url"
+                      [alt]="tool.tool"
+                      class="tool-image"
+                      (error)="hideImage($event)"
+                    />
+                  </div>
+                  <div class="tool-body">
+                    <div class="tool-header-row">
+                      <h3 class="tool-name">{{ tool.tool }}</h3>
+                      <span class="category-badge">{{ tool.category }}</span>
+                    </div>
+                    <p class="tool-desc">{{ tool.tool_description }}</p>
+                    <div class="tool-footer">
+                      <span class="upvotes">
+                        <span class="material-symbols-rounded">thumb_up</span>
+                        {{ tool.upvotes }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+}
+
+@else if (isLoading()) {
   <div class="loading-state">
     <div class="loading-orb">
       <div class="loading-ring r1"></div>
@@ -21,16 +85,16 @@
   <div class="results-wrapper">
     <div class="results-header">
       <div>
-        <h1 class="results-title">Tus recomendaciones</h1>
+        <h1 class="results-title gradient-title">Tus recomendaciones</h1>
         <p class="results-count">{{ recommendations().length }} herramientas seleccionadas para ti</p>
       </div>
       <div class="header-actions">
         <button (click)="editPreferences()" class="btn-secondary">
-          <span class="material-icons">tune</span>
+          <span class="material-symbols-rounded">tune</span>
           Editar preferencias
         </button>
         <button (click)="clearPrefs()" class="btn-danger">
-          <span class="material-icons">delete_outline</span>
+          <span class="material-symbols-rounded">delete_outline</span>
           Limpiar
         </button>
       </div>
@@ -61,11 +125,20 @@
                 <span class="category-badge">{{ tool.category }}</span>
               </div>
               <p class="tool-desc">{{ tool.tool_description }}</p>
+              @if (tool.reasons && tool.reasons.length > 0) {
+                <p class="match-reason">
+                  <span class="material-symbols-rounded">bolt</span>
+                  {{ tool.reasons[0] }}
+                </p>
+              }
               <div class="tool-footer">
                 <span class="upvotes">
-                  <span class="material-icons">thumb_up</span>
+                  <span class="material-symbols-rounded">thumb_up</span>
                   {{ tool.upvotes }}
                 </span>
+                @if (tool.match_pct != null) {
+                  <span class="match-badge">{{ tool.match_pct }}% match</span>
+                }
               </div>
             </div>
           </div>
@@ -77,7 +150,7 @@
 
 @else if (errorMsg()) {
   <div class="error-state">
-    <span class="material-icons" style="font-size:3rem">error_outline</span>
+    <span class="material-symbols-rounded" style="font-size:3rem">error_outline</span>
     <p>{{ errorMsg() }}</p>
     <button (click)="clearPrefs()" class="btn-secondary">Reintentar desde el inicio</button>
   </div>
@@ -95,7 +168,7 @@
             [class.completed]="currentStep() > step"
           >
             @if (currentStep() > step) {
-              <span class="material-icons">check</span>
+              <span class="material-symbols-rounded">check</span>
             } @else {
               {{ step + 1 }}
             }
@@ -116,14 +189,14 @@
 
             @if (preferences().occupation) {
               <div class="selected-badge">
-                <span class="material-icons">check_circle</span>
+                <span class="material-symbols-rounded">check_circle</span>
                 {{ preferences().occupation }}
                 <button (click)="clearOccupation()" class="clear-selection">✕</button>
               </div>
             }
 
             <div class="search-wrapper">
-              <span class="material-icons search-icon">search</span>
+              <span class="material-symbols-rounded search-icon">search</span>
               <input
                 type="text"
                 placeholder="Buscar ocupación..."
@@ -134,7 +207,7 @@
 
             <div class="occupation-list">
               @if (allOccupations().length === 0) {
-                <div class="loading-occupations">
+                <div class="loading-row">
                   <div class="mini-spinner"></div>
                   <span>Cargando ocupaciones...</span>
                 </div>
@@ -149,7 +222,7 @@
                   >
                     <span>{{ occ.occupation_name }}</span>
                     @if (preferences().occupation === occ.occupation_name) {
-                      <span class="material-icons check-icon">check</span>
+                      <span class="material-symbols-rounded check-icon">check</span>
                     }
                   </button>
                 }
@@ -244,7 +317,7 @@
       <div class="wizard-nav">
         @if (currentStep() > 0) {
           <button (click)="back()" class="btn-back">
-            <span class="material-icons">arrow_back</span>
+            <span class="material-symbols-rounded">arrow_back</span>
             Atrás
           </button>
         } @else {
@@ -263,9 +336,9 @@
           >
             {{ currentStep() === 4 ? 'Finalizar' : 'Siguiente' }}
             @if (currentStep() < 4) {
-              <span class="material-icons">arrow_forward</span>
+              <span class="material-symbols-rounded">arrow_forward</span>
             } @else {
-              <span class="material-icons">rocket_launch</span>
+              <span class="material-symbols-rounded">rocket_launch</span>
             }
           </button>
         </div>

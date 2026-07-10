@@ -1,1 +1,91 @@
-<p>login works!</p>
+<div class="page-bg" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <span class="auth-mark">
+      <span class="material-symbols-rounded">bolt</span>
+    </span>
+    <h1 class="auth-title">{{ mode() === 'login' ? 'Inicia sesión' : 'Crea tu cuenta' }}</h1>
+    <p class="auth-subtitle">
+      {{ mode() === 'login'
+        ? 'Accede para ver tus recomendaciones personalizadas.'
+        : 'Guarda tus preferencias y recibe recomendaciones a tu medida.' }}
+    </p>
+
+    @if (errorMsg()) {
+      <div class="auth-error">
+        <span class="material-symbols-rounded">error_outline</span>
+        {{ errorMsg() }}
+      </div>
+    }
+
+    @if (infoMsg()) {
+      <div class="auth-info">
+        <span class="material-symbols-rounded">check_circle</span>
+        {{ infoMsg() }}
+      </div>
+    }
+
+    <form (ngSubmit)="submit()" class="auth-form">
+      <label class="auth-label">
+        Email
+        <div class="auth-input-wrapper">
+          <span class="material-symbols-rounded auth-input-icon">mail</span>
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="email"
+            class="auth-input"
+            placeholder="tu@email.com"
+            autocomplete="email"
+            required
+          />
+        </div>
+      </label>
+
+      <label class="auth-label">
+        Contraseña
+        <div class="auth-input-wrapper">
+          <span class="material-symbols-rounded auth-input-icon">lock</span>
+          <input
+            [type]="showPassword() ? 'text' : 'password'"
+            name="password"
+            [(ngModel)]="password"
+            class="auth-input"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            class="auth-input-toggle"
+            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            (click)="togglePasswordVisibility()"
+          >
+            <span class="material-symbols-rounded">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+      </label>
+
+      <button type="submit" class="btn-next auth-submit" [disabled]="isLoading()">
+        @if (isLoading()) {
+          Cargando...
+        } @else {
+          {{ mode() === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}
+        }
+      </button>
+    </form>
+
+    <button type="button" class="auth-toggle" (click)="toggleMode()">
+      {{ mode() === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión' }}
+    </button>
+
+    <a routerLink="/" class="auth-back">
+      <span class="material-symbols-rounded">arrow_back</span>
+      Volver al inicio
+    </a>
+  </div>
+</div>
