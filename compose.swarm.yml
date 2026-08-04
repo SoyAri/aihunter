@@ -12,7 +12,7 @@ services:
       - frontend
     deploy:
       mode: replicated
-      replicas: 4
+      replicas: 3
       placement:
         constraints:
           - node.platform.os == linux
