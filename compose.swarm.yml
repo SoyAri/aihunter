@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: ${AIHUNTER_IMAGE:?Define AIHUNTER_IMAGE con la imagen publicada, por ejemplo usuario/aihunter:1.0}
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+        mode: ingress
+    networks:
+      - frontend
+    deploy:
+      mode: replicated
+      replicas: 4
+      placement:
+        constraints:
+          - node.platform.os == linux
+      restart_policy:
+        condition: any
+        delay: 5s
+        window: 30s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 30s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        monitor: 30s
+        order: stop-first
+      resources:
+        reservations:
+          cpus: "0.10"
+          memory: 64M
+        limits:
+          cpus: "1.00"
+          memory: 256M
+
+networks:
+  frontend:
+    driver: overlay
